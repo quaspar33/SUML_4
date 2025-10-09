@@ -1,0 +1,4 @@
+Data/models/**/*.pkl filter=lfs diff=lfs merge=lfs -text
+Data/models/utils/data/X.pkl filter=lfs diff=lfs merge=lfs -text
+Data/models/**/*.ubj filter=lfs diff=lfs merge=lfs -text
+Data/models/**/X filter=lfs diff=lfs merge=lfs -text
