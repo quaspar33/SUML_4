@@ -1,4 +1,4 @@
-# Podstwa analiza danych (przed obróbką) ===
+# Podstwa analiza danych (przed obróbką)
 
 import pandas as pd
 import numpy as np
