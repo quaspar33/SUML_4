@@ -1,4 +1,4 @@
-# ETAP 1: Czyszczenie, kodowanie i usuwanie wartości odstających
+# Czyszczenie, kodowanie i usuwanie wartości odstających
 
 import pandas as pd
 import numpy as np
