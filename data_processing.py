@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-df = pd.read_csv('Data/archive/ai_job_dataset.csv')
+df = pd.read_csv('data/ai_job_dataset.csv')
 print(df.head)
 df.info()
 df.describe()
