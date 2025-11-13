@@ -9,7 +9,7 @@ import os
 BASE_DIR = Path(__file__).resolve().parent
 
 # -------------------------------------
-# 🌐 TRANSLATIONS (UX only)
+# TRANSLATIONS (UX only)
 # -------------------------------------
 LANGUAGES = {
     "PL": {
@@ -22,19 +22,19 @@ LANGUAGES = {
         },
         "mock_toggle": "Użyj mocka (brak backendu)",
         "mock_help": "Gdy nie ma gotowych endpointów backendu, pokaż przykładowe wyniki.",
-        "home_title": "🤖 AI Salaries – demo frontendu",
+        "home_title": "AI Salaries – demo frontendu",
         "home_desc": "To jest **mockup** aplikacji do predykcji wynagrodzeń na rynku AI. "
                      "Interfejs pozwala przewidywać zarobki na podstawie cech oferty oraz sprawdzać, "
                      "jakie konfiguracje cech sprzyjają osiągnięciu zadanego poziomu pensji.",
-        "home_flows": "🔄 Przepływy użytkownika",
+        "home_flows": "Przepływy użytkownika",
         "home_flows_md": """
             1. **Predykcja wynagrodzenia** – użytkownik podaje cechy oferty/stanowiska → dostaje przewidywane `salary_usd`.  
             2. **Celowane wynagrodzenie** – użytkownik podaje *docelowe* `salary_usd` → dostaje konfiguracje cech, które pozwalają osiągnąć taki poziom.  
             3. **Warianty** – użytkownik podaje zestaw wartości → aplikacja liczy przewidywane zarobki dla wszystkich kombinacji.
         """,
-        "info_header": "ℹ️ Informacja",
+        "info_header": "Informacja",
         "info_text": "To wersja pokazowa interfejsu użytkownika. Wyniki mogą być generowane w trybie demo (mock).",
-        "app_title": "⚙️ Aplikacja",
+        "app_title": "Aplikacja",
         "tab_pred": "Predykcja wynagrodzenia",
         "tab_inverse": "Jak osiągnąć podane wynagrodzenie?",
         "tab_grid": "Warianty (wiele kombinacji)",
@@ -56,22 +56,22 @@ LANGUAGES = {
         "payload_header": "Wejście do predykcji (payload)",
         "mock_result": "Predykcja (mock):",
         "mock_caption": "To tylko symulacja po stronie frontendu.",
-        "clean_title": "🧹 Czyszczenie, kodowanie i usuwanie wartości odstających",
+        "clean_title": "Czyszczenie, kodowanie i usuwanie wartości odstających",
         "clean_md": """
         W tej sekcji opisano etapy przygotowania danych wejściowych dla modelu predykcji wynagrodzeń:
-        1. **Usunięcie białych znaków** w kolumnach tekstowych  
-        2. **Konwersja dat** do formatu `datetime`  
-        3. **Normalizacja `remote_ratio`** do wartości {0, 50, 100}  
-        4. **Usuwanie wartości odstających (IQR)**  
-        5. **Kodowanie kategorycznych** (`.cat.codes`, One-Hot)  
-        6. **Mapowanie wartości porządkowych** (`company_size`, `education_required`)  
-        7. **Ekstrakcja top umiejętności** z kolumny `required_skills`
+        1. Usunięcie białych znaków w kolumnach tekstowych  
+        2. Konwersja dat do formatu `datetime`  
+        3. Normalizacja `remote_ratio` do wartości {0, 50, 100}  
+        4. Usuwanie wartości odstających (IQR)  
+        5. Kodowanie kategorycznych (`.cat.codes`, One-Hot)  
+        6. Mapowanie wartości porządkowych (`company_size`, `education_required`)  
+        7. Ekstrakcja top umiejętności z kolumny `required_skills`
         """,
-        "clean_code": "📄 Zobacz kod czyszczenia",
+        "clean_code": "Zobacz kod czyszczenia",
         "clean_notfound": "Nie znaleziono pliku:",
-        "clean_preview": "📊 Podgląd wyczyszczonych danych",
+        "clean_preview": "Podgląd wyczyszczonych danych",
         "clean_csv_missing": "Plik `{}` nie został znaleziony.",
-        "analysis_title": "📊 Analiza modelu predykcji wynagrodzeń",
+        "analysis_title": "Analiza modelu predykcji wynagrodzeń",
         "analysis_md": """
         W tej sekcji prezentowane są wyniki i wizualizacje analizy modelu.  
         Wykresy pokazują m.in. rozkłady danych, korelacje, ważność cech oraz jakość predykcji.
@@ -92,19 +92,19 @@ LANGUAGES = {
         },
         "mock_toggle": "Use mock (no backend)",
         "mock_help": "Show sample results when backend endpoints are unavailable.",
-        "home_title": "🤖 AI Salaries – frontend demo",
+        "home_title": "AI Salaries – frontend demo",
         "home_desc": "This is a **mockup** of an AI salary prediction app. "
                      "The interface allows you to predict salaries based on job attributes "
                      "and explore which configurations support specific salary levels.",
-        "home_flows": "🔄 User Flows",
+        "home_flows": "User Flows",
         "home_flows_md": """
             1. **Salary prediction** – the user provides job attributes → gets predicted `salary_usd`.  
             2. **Target salary** – the user specifies a *desired* `salary_usd` → gets feature configurations to reach it.  
             3. **Variants** – the user provides sets of values → the app computes predicted salaries for all combinations.
         """,
-        "info_header": "ℹ️ Information",
+        "info_header": "Information",
         "info_text": "This is a demo version of the UI. Results may be mock-generated.",
-        "app_title": "⚙️ Application",
+        "app_title": "Application",
         "tab_pred": "Salary Prediction",
         "tab_inverse": "How to Reach Target Salary?",
         "tab_grid": "Variants (Multiple Combinations)",
@@ -126,22 +126,22 @@ LANGUAGES = {
         "payload_header": "Prediction Input (payload)",
         "mock_result": "Prediction (mock):",
         "mock_caption": "Frontend-only simulation.",
-        "clean_title": "🧹 Cleaning, Encoding, and Outlier Removal",
+        "clean_title": "Cleaning, Encoding, and Outlier Removal",
         "clean_md": """
         This section describes preprocessing steps for salary prediction data:
-        1. **Strip whitespace** in text columns  
-        2. **Convert dates** to `datetime`  
-        3. **Normalize `remote_ratio`** to {0, 50, 100}  
-        4. **Remove outliers (IQR)**  
-        5. **Encode categorical** (`.cat.codes`, One-Hot)  
-        6. **Map ordinal features** (`company_size`, `education_required`)  
-        7. **Extract top skills** from `required_skills`
+        1. Strip whitespace in text columns  
+        2. Convert dates to `datetime`  
+        3. Normalize `remote_ratio` to {0, 50, 100}  
+        4. Remove outliers (IQR)  
+        5. Encode categorical (`.cat.codes`, One-Hot)  
+        6. Map ordinal features (`company_size`, `education_required`)  
+        7. Extract top skills from `required_skills`
         """,
-        "clean_code": "📄 View Cleaning Code",
+        "clean_code": "View Cleaning Code",
         "clean_notfound": "File not found:",
-        "clean_preview": "📊 Preview of Cleaned Data",
+        "clean_preview": "Preview of Cleaned Data",
         "clean_csv_missing": "File `{}` not found.",
-        "analysis_title": "📊 Model Analysis and Visualization",
+        "analysis_title": "Model Analysis and Visualization",
         "analysis_md": """
         This section presents model evaluation and visualizations — 
         distributions, correlations, feature importance, and prediction quality.
@@ -163,7 +163,7 @@ if "page" not in st.session_state:
     st.session_state.page = "home"
 
 # Sidebar language switcher
-lang_choice = st.sidebar.selectbox("🌐 Language / Język", ["PL", "EN"], index=["PL", "EN"].index(st.session_state.language))
+lang_choice = st.sidebar.selectbox("Language / Język", ["PL", "EN"], index=["PL", "EN"].index(st.session_state.language))
 if lang_choice != st.session_state.language:
     st.session_state.language = lang_choice
 
@@ -171,9 +171,9 @@ T = LANGUAGES[st.session_state.language]
 NAV = T["nav_labels"]
 
 # -------------------------------------
-# ⚙️ APP SETTINGS
+# APP SETTINGS
 # -------------------------------------
-st.set_page_config(page_title="AI Salaries – Demo", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="AI Salaries – Demo", page_icon="💼", layout="wide")
 
 # --- STYLE ---
 st.markdown(
@@ -192,7 +192,7 @@ st.markdown(
 )
 
 # -------------------------------------
-# 📋 MOCK DATA
+# MOCK DATA
 # -------------------------------------
 ROLES = [
     "AI Research Scientist", "AI Software Engineer", "AI Specialist",
@@ -208,7 +208,7 @@ SKILLS = ["Python", "TensorFlow", "PyTorch", "NLP", "Computer Vision", "MLOps", 
 LOCATIONS = ["US", "PL", "UK", "DE", "FR", "CA", "IN", "Remote"]
 
 # -------------------------------------
-# 🧭 SIDEBAR NAVIGATION
+# SIDEBAR NAVIGATION
 # -------------------------------------
 nav_keys = ["home", "app", "cleaning", "analysis"]
 page_label = st.sidebar.radio(T["nav_title"], [NAV[k] for k in nav_keys],
@@ -220,7 +220,7 @@ st.sidebar.markdown("---")
 mock_toggle = st.sidebar.toggle(T["mock_toggle"], value=True, help=T["mock_help"])
 
 # -------------------------------------
-# 🔮 MOCK PREDICTION
+# MOCK PREDICTION
 # -------------------------------------
 def _estimate_salary_mock(job_title, experience_level, remote_ratio,
                           education_required, company_size, required_skills, benefits_score):
@@ -243,7 +243,7 @@ def _estimate_salary_mock(job_title, experience_level, remote_ratio,
     return int(round(base * (1 + exp_boost + remote_adj + edu_adj + size_adj + skills_adj + benefits_adj), -2))
 
 # -------------------------------------
-# 🏠 HOME PAGE
+# HOME PAGE
 # -------------------------------------
 if st.session_state.page == "home":
     st.title(T["home_title"])
@@ -257,7 +257,7 @@ if st.session_state.page == "home":
         st.markdown(T["info_text"])
 
 # -------------------------------------
-# ⚙️ APPLICATION
+# APPLICATION
 # -------------------------------------
 if st.session_state.page == "app":
     st.title(T["app_title"])
@@ -309,7 +309,7 @@ if st.session_state.page == "app":
                 st.caption(T["mock_caption"])
 
 # -------------------------------------
-# 🧹 CLEANING
+# CLEANING
 # -------------------------------------
 if st.session_state.page == "cleaning":
     st.title(T["clean_title"])
@@ -329,7 +329,7 @@ if st.session_state.page == "cleaning":
         st.info(T["clean_csv_missing"].format(cleaned_path.name))
 
 # -------------------------------------
-# 📊 ANALYSIS
+# ANALYSIS
 # -------------------------------------
 if st.session_state.page == "analysis":
     st.title(T["analysis_title"])
@@ -351,7 +351,7 @@ if st.session_state.page == "analysis":
                     st.caption(f"{T['source']} {img_path.name}")
 
 # -------------------------------------
-# 📘 FOOTER
+# FOOTER
 # -------------------------------------
 st.markdown("---")
 st.markdown(f"<span class='muted'>{T['footer']}</span>", unsafe_allow_html=True)
