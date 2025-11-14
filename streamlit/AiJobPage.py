@@ -1,3 +1,5 @@
+# AiJobPage.py
+
 import streamlit as st
 import pandas as pd
 import itertools
@@ -5,6 +7,20 @@ from datetime import date
 from pathlib import Path
 from PIL import Image
 import os
+import sys
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+# Import z pakietu connector
+try:
+    from connector.Connector import predict_salary, inverse_salary_search, salary_grid
+except Exception as e:
+    print("DEBUG import connector FAILED")
+    print("ROOT_DIR:", ROOT_DIR)
+    print("sys.path:", sys.path)
+    raise e
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -80,7 +96,20 @@ LANGUAGES = {
         "analysis_no_png": "Brak plików PNG w folderze analizy modelu.",
         "analysis_select": "Wybierz wykresy do wyświetlenia:",
         "source": "Źródło:",
-        "footer": "Wersja demo. Miejsca integracji z backendem oznaczone w kodzie jako <code># BACKEND:</code>."
+        "footer": "Wersja demo. Miejsca integracji z backendem oznaczone w kodzie jako <code># BACKEND:</code>.",
+
+        # --- NOWE TEKSTY DLA ZAKŁADEK 2 i 3 ---
+        "inverse_intro": "Podaj docelowe wynagrodzenie oraz (opcjonalnie) ograniczenia cech, "
+                         "aby zobaczyć konfiguracje sprzyjające takiej pensji.",
+        "target_salary": "Docelowe wynagrodzenie (USD)",
+        "inverse_filters_header": "Ograniczenia (opcjonalne)",
+        "inverse_submit": "Znajdź konfiguracje",
+        "inverse_results_header": "Proponowane konfiguracje stanowiska",
+        "grid_intro": "Wybierz zestawy wartości, dla których chcesz policzyć wszystkie kombinacje "
+                      "i przewidywane wynagrodzenia.",
+        "grid_submit": "Policz kombinacje",
+        "grid_results_header": "Wyniki dla wszystkich kombinacji",
+        "backend_error": "Błąd podczas komunikacji z backendem:",
     },
     "EN": {
         "nav_title": "Navigation",
@@ -150,7 +179,20 @@ LANGUAGES = {
         "analysis_no_png": "No PNG charts found in the analysis folder.",
         "analysis_select": "Select charts to display:",
         "source": "Source:",
-        "footer": "Demo version. Backend integration points marked with <code># BACKEND:</code>."
+        "footer": "Demo version. Backend integration points marked with <code># BACKEND:</code>.",
+
+        # --- NEW TEXTS ---
+        "inverse_intro": "Provide a target salary and (optionally) feature constraints "
+                         "to see configurations that support this level.",
+        "target_salary": "Target salary (USD)",
+        "inverse_filters_header": "Constraints (optional)",
+        "inverse_submit": "Find configurations",
+        "inverse_results_header": "Suggested job configurations",
+        "grid_intro": "Select sets of values for which you want to compute all combinations "
+                      "and predicted salaries.",
+        "grid_submit": "Compute combinations",
+        "grid_results_header": "Results for all combinations",
+        "backend_error": "Backend error:",
     }
 }
 
@@ -192,7 +234,7 @@ st.markdown(
 )
 
 # -------------------------------------
-# MOCK DATA
+# MOCK DATA (POZOSTAJE JAK BYŁO)
 # -------------------------------------
 ROLES = [
     "AI Research Scientist", "AI Software Engineer", "AI Specialist",
@@ -220,29 +262,6 @@ st.sidebar.markdown("---")
 mock_toggle = st.sidebar.toggle(T["mock_toggle"], value=True, help=T["mock_help"])
 
 # -------------------------------------
-# MOCK PREDICTION
-# -------------------------------------
-def _estimate_salary_mock(job_title, experience_level, remote_ratio,
-                          education_required, company_size, required_skills, benefits_score):
-    base = {
-        "AI Research Scientist": 155_000,
-        "AI Software Engineer": 135_000,
-        "AI Specialist": 120_000,
-        "NLP Engineer": 140_000,
-        "AI Consultant": 125_000,
-        "AI Architect": 150_000,
-        "Principal Data Scientist": 165_000,
-        "Data Analyst": 95_000,
-    }.get(job_title, 120_000)
-    exp_boost = {"Entry": -0.15, "Mid": 0.0, "Senior": 0.25, "Principal": 0.45, "Lead": 0.4}[experience_level]
-    remote_adj = 0.05 if remote_ratio >= 80 else (0.02 if remote_ratio >= 50 else 0.0)
-    edu_adj = {"None": -0.05, "Bachelor": 0.0, "Master": 0.05, "PhD": 0.12}[education_required]
-    size_adj = {"S": -0.03, "M": 0.0, "L": 0.03, "XL": 0.05}[company_size]
-    skills_adj = min(len(required_skills) * 0.01, 0.08)
-    benefits_adj = (benefits_score - 7.5) * 0.01
-    return int(round(base * (1 + exp_boost + remote_adj + edu_adj + size_adj + skills_adj + benefits_adj), -2))
-
-# -------------------------------------
 # HOME PAGE
 # -------------------------------------
 if st.session_state.page == "home":
@@ -262,6 +281,8 @@ if st.session_state.page == "home":
 if st.session_state.page == "app":
     st.title(T["app_title"])
     tab_pred, tab_inverse, tab_grid = st.tabs([T["tab_pred"], T["tab_inverse"], T["tab_grid"]])
+
+    # ----------------- TAB 1: PREDYKCA -----------------
     with tab_pred:
         st.markdown(T["form_intro"])
         with st.form("pred_form", clear_on_submit=False):
@@ -302,11 +323,129 @@ if st.session_state.page == "app":
             }
             st.subheader(T["payload_header"])
             st.json(payload, expanded=False)
-            if mock_toggle:
-                est = _estimate_salary_mock(job_title, experience_level, remote_ratio,
-                                            education_required, company_size, required_skills, benefits_score)
+
+            # BACKEND: predykcja wynagrodzenia
+            resp = predict_salary(payload, use_mock=mock_toggle)
+            if resp.get("status") == "ok":
+                est = resp["prediction"]["salary_usd"]
                 st.success(f"**{T['mock_result']}** ${est:,}")
-                st.caption(T["mock_caption"])
+                if resp.get("meta", {}).get("source") == "mock":
+                    st.caption(T["mock_caption"])
+            else:
+                st.error(f"{T['backend_error']} {resp.get('error', 'Unknown error')}")
+
+    # ----------------- TAB 2: INVERSE -----------------
+    with tab_inverse:
+        st.markdown(T["inverse_intro"])
+        with st.form("inverse_form"):
+            target_salary = st.number_input(T["target_salary"], min_value=20_000, max_value=400_000, value=150_000, step=5_000)
+
+            with st.expander(T["inverse_filters_header"], expanded=False):
+                c1, c2 = st.columns(2)
+                with c1:
+                    inv_roles = st.multiselect(T["job_title"], ROLES)
+                    inv_exp = st.multiselect(T["experience_level"], EXPERIENCE)
+                with c2:
+                    inv_company_size = st.multiselect(T["company_size"], COMPANY_SIZE)
+                    inv_remote_ratio = st.multiselect(T["remote_ratio"], [0, 50, 100])
+
+            inverse_submit = st.form_submit_button(T["inverse_submit"])
+
+        if inverse_submit:
+            constraints = {
+                "job_title": inv_roles or None,
+                "experience_level": inv_exp or None,
+                "company_size": inv_company_size or None,
+                "remote_ratio": inv_remote_ratio or None,
+            }
+
+            # BACKEND: wyszukiwanie konfiguracji dla target salary
+            resp = inverse_salary_search(target_salary, constraints=constraints, use_mock=mock_toggle)
+
+            if resp.get("status") == "ok":
+                solutions = resp.get("solutions", [])
+                if solutions:
+                    st.subheader(T["inverse_results_header"])
+                    df_solutions = pd.DataFrame(solutions)
+                    st.dataframe(df_solutions, use_container_width=True)
+                    meta = resp.get("meta", {})
+                    grid_size = meta.get("grid_size", None)
+                    if grid_size:
+                        st.caption(f"<span class='small-note'>Liczba sprawdzonych konfiguracji: {grid_size}</span>",
+                                   unsafe_allow_html=True)
+                else:
+                    st.info("Brak konfiguracji spełniających kryteria.")
+            else:
+                st.error(f"{T['backend_error']} {resp.get('error', 'Unknown error')}")
+
+    # ----------------- TAB 3: GRID -----------------
+    with tab_grid:
+        st.markdown(T["grid_intro"])
+
+        with st.form("grid_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                grid_roles = st.multiselect(T["job_title"], ROLES, default=ROLES[:2])
+                grid_exp = st.multiselect(T["experience_level"], EXPERIENCE, default=["Senior"])
+            with c2:
+                grid_company_size = st.multiselect(T["company_size"], COMPANY_SIZE, default=["M", "L"])
+                grid_remote_ratio = st.multiselect(T["remote_ratio"], [0, 50, 100], default=[0, 50, 100])
+
+            st.markdown("---")
+            st.markdown("<span class='small-note'>Poniżej możesz ustawić parametry wspólne dla wszystkich kombinacji.</span>",
+                        unsafe_allow_html=True)
+            c3, c4 = st.columns(2)
+            with c3:
+                grid_employment_type = st.selectbox(T["employment_type"], EMPLOYMENT, index=0)
+                grid_education = st.selectbox(T["education_required"], EDU, index=2)
+            with c4:
+                grid_company_location = st.selectbox(T["company_location"], LOCATIONS, index=0)
+                grid_benefits = st.slider(T["benefits_score"], 5.0, 10.0, 7.5, step=0.1)
+
+            grid_submit = st.form_submit_button(T["grid_submit"])
+
+        if grid_submit:
+            # Zabezpieczenie przed pustymi listami
+            if not grid_roles or not grid_exp or not grid_company_size or not grid_remote_ratio:
+                st.warning("Wybierz co najmniej jedną wartość w każdej z list (stanowisko, poziom, rozmiar firmy, udział zdalny).")
+            else:
+                grid_spec = {
+                    "job_title": grid_roles,
+                    "experience_level": grid_exp,
+                    "company_size": grid_company_size,
+                    "remote_ratio": grid_remote_ratio,
+                }
+
+                base_payload = {
+                    "employment_type": grid_employment_type,
+                    "education_required": grid_education,
+                    "company_location": grid_company_location,
+                    "employee_residence": grid_company_location,
+                    "industry": "Technology",
+                    "required_skills": ["Python", "SQL"],
+                    "years_experience": 3,
+                    "benefits_score": float(grid_benefits),
+                    "salary_currency": "USD",
+                }
+
+                # BACKEND: liczenie siatki kombinacji
+                resp = salary_grid(grid_spec, base_payload, use_mock=mock_toggle)
+
+                if resp.get("status") == "ok":
+                    rows = resp.get("rows", [])
+                    if rows:
+                        st.subheader(T["grid_results_header"])
+                        df_grid = pd.DataFrame(rows)
+                        st.dataframe(df_grid, use_container_width=True)
+                        meta = resp.get("meta", {})
+                        st.caption(
+                            f"<span class='small-note'>Liczba kombinacji: {meta.get('grid_size', len(rows))}</span>",
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.info("Brak wyników dla podanych kombinacji.")
+                else:
+                    st.error(f"{T['backend_error']} {resp.get('error', 'Unknown error')}")
 
 # -------------------------------------
 # CLEANING
