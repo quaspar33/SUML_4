@@ -1,22 +1,187 @@
 import streamlit as st
 import pandas as pd
-from datetime import date
 import itertools
+from datetime import date
+from pathlib import Path
+from PIL import Image
+import os
 
-# USTAWIENIA APLIKACJI
-st.set_page_config(
-    page_title="AI Salaries – Demo",
-    page_icon="",
-    layout="wide",
-)
+BASE_DIR = Path(__file__).resolve().parent
 
-# --- styl (mock UI) ---
+# -------------------------------------
+# TRANSLATIONS (UX only)
+# -------------------------------------
+LANGUAGES = {
+    "PL": {
+        "nav_title": "Nawigacja",
+        "nav_labels": {
+            "home": "Strona główna",
+            "app": "Aplikacja",
+            "cleaning": "Czyszczenie danych",
+            "analysis": "Analiza modelu",
+        },
+        "mock_toggle": "Użyj mocka (brak backendu)",
+        "mock_help": "Gdy nie ma gotowych endpointów backendu, pokaż przykładowe wyniki.",
+        "home_title": "AI Salaries – demo frontendu",
+        "home_desc": "To jest **mockup** aplikacji do predykcji wynagrodzeń na rynku AI. "
+                     "Interfejs pozwala przewidywać zarobki na podstawie cech oferty oraz sprawdzać, "
+                     "jakie konfiguracje cech sprzyjają osiągnięciu zadanego poziomu pensji.",
+        "home_flows": "Przepływy użytkownika",
+        "home_flows_md": """
+            1. **Predykcja wynagrodzenia** – użytkownik podaje cechy oferty/stanowiska → dostaje przewidywane `salary_usd`.  
+            2. **Celowane wynagrodzenie** – użytkownik podaje *docelowe* `salary_usd` → dostaje konfiguracje cech, które pozwalają osiągnąć taki poziom.  
+            3. **Warianty** – użytkownik podaje zestaw wartości → aplikacja liczy przewidywane zarobki dla wszystkich kombinacji.
+        """,
+        "info_header": "Informacja",
+        "info_text": "To wersja pokazowa interfejsu użytkownika. Wyniki mogą być generowane w trybie demo (mock).",
+        "app_title": "Aplikacja",
+        "tab_pred": "Predykcja wynagrodzenia",
+        "tab_inverse": "Jak osiągnąć podane wynagrodzenie?",
+        "tab_grid": "Warianty (wiele kombinacji)",
+        "form_intro": "Podaj cechy stanowiska, aby obliczyć przewidywane wynagrodzenie (USD).",
+        "job_title": "Stanowisko",
+        "experience_level": "Poziom doświadczenia",
+        "employment_type": "Typ zatrudnienia",
+        "years_experience": "Lata doświadczenia",
+        "education_required": "Wykształcenie",
+        "company_location": "Lokalizacja firmy",
+        "employee_residence": "Miejsce zamieszkania",
+        "company_size": "Wielkość firmy",
+        "remote_ratio": "Udział pracy zdalnej (%)",
+        "benefits_score": "Ocena benefitów (5–10)",
+        "industry": "Branża",
+        "required_skills": "Wymagane umiejętności",
+        "salary_currency": "Waluta wynagrodzenia",
+        "form_submit": "Oblicz wynagrodzenie",
+        "payload_header": "Wejście do predykcji (payload)",
+        "mock_result": "Predykcja (mock):",
+        "mock_caption": "To tylko symulacja po stronie frontendu.",
+        "clean_title": "Czyszczenie, kodowanie i usuwanie wartości odstających",
+        "clean_md": """
+        W tej sekcji opisano etapy przygotowania danych wejściowych dla modelu predykcji wynagrodzeń:
+        1. Usunięcie białych znaków w kolumnach tekstowych  
+        2. Konwersja dat do formatu `datetime`  
+        3. Normalizacja `remote_ratio` do wartości {0, 50, 100}  
+        4. Usuwanie wartości odstających (IQR)  
+        5. Kodowanie kategorycznych (`.cat.codes`, One-Hot)  
+        6. Mapowanie wartości porządkowych (`company_size`, `education_required`)  
+        7. Ekstrakcja top umiejętności z kolumny `required_skills`
+        """,
+        "clean_code": "Zobacz kod czyszczenia",
+        "clean_notfound": "Nie znaleziono pliku:",
+        "clean_preview": "Podgląd wyczyszczonych danych",
+        "clean_csv_missing": "Plik `{}` nie został znaleziony.",
+        "analysis_title": "Analiza modelu predykcji wynagrodzeń",
+        "analysis_md": """
+        W tej sekcji prezentowane są wyniki i wizualizacje analizy modelu.  
+        Wykresy pokazują m.in. rozkłady danych, korelacje, ważność cech oraz jakość predykcji.
+        """,
+        "analysis_folder_missing": "Nie znaleziono folderu z wykresami:",
+        "analysis_no_png": "Brak plików PNG w folderze analizy modelu.",
+        "analysis_select": "Wybierz wykresy do wyświetlenia:",
+        "source": "Źródło:",
+        "footer": "Wersja demo. Miejsca integracji z backendem oznaczone w kodzie jako <code># BACKEND:</code>."
+    },
+    "EN": {
+        "nav_title": "Navigation",
+        "nav_labels": {
+            "home": "Home",
+            "app": "Application",
+            "cleaning": "Data Cleaning",
+            "analysis": "Model Analysis",
+        },
+        "mock_toggle": "Use mock (no backend)",
+        "mock_help": "Show sample results when backend endpoints are unavailable.",
+        "home_title": "AI Salaries – frontend demo",
+        "home_desc": "This is a **mockup** of an AI salary prediction app. "
+                     "The interface allows you to predict salaries based on job attributes "
+                     "and explore which configurations support specific salary levels.",
+        "home_flows": "User Flows",
+        "home_flows_md": """
+            1. **Salary prediction** – the user provides job attributes → gets predicted `salary_usd`.  
+            2. **Target salary** – the user specifies a *desired* `salary_usd` → gets feature configurations to reach it.  
+            3. **Variants** – the user provides sets of values → the app computes predicted salaries for all combinations.
+        """,
+        "info_header": "Information",
+        "info_text": "This is a demo version of the UI. Results may be mock-generated.",
+        "app_title": "Application",
+        "tab_pred": "Salary Prediction",
+        "tab_inverse": "How to Reach Target Salary?",
+        "tab_grid": "Variants (Multiple Combinations)",
+        "form_intro": "Enter job features to estimate salary (USD).",
+        "job_title": "Job Title",
+        "experience_level": "Experience Level",
+        "employment_type": "Employment Type",
+        "years_experience": "Years of Experience",
+        "education_required": "Education Required",
+        "company_location": "Company Location",
+        "employee_residence": "Employee Residence",
+        "company_size": "Company Size",
+        "remote_ratio": "Remote Ratio (%)",
+        "benefits_score": "Benefits Score (5–10)",
+        "industry": "Industry",
+        "required_skills": "Required Skills",
+        "salary_currency": "Salary Currency",
+        "form_submit": "Estimate Salary",
+        "payload_header": "Prediction Input (payload)",
+        "mock_result": "Prediction (mock):",
+        "mock_caption": "Frontend-only simulation.",
+        "clean_title": "Cleaning, Encoding, and Outlier Removal",
+        "clean_md": """
+        This section describes preprocessing steps for salary prediction data:
+        1. Strip whitespace in text columns  
+        2. Convert dates to `datetime`  
+        3. Normalize `remote_ratio` to {0, 50, 100}  
+        4. Remove outliers (IQR)  
+        5. Encode categorical (`.cat.codes`, One-Hot)  
+        6. Map ordinal features (`company_size`, `education_required`)  
+        7. Extract top skills from `required_skills`
+        """,
+        "clean_code": "View Cleaning Code",
+        "clean_notfound": "File not found:",
+        "clean_preview": "Preview of Cleaned Data",
+        "clean_csv_missing": "File `{}` not found.",
+        "analysis_title": "Model Analysis and Visualization",
+        "analysis_md": """
+        This section presents model evaluation and visualizations — 
+        distributions, correlations, feature importance, and prediction quality.
+        """,
+        "analysis_folder_missing": "Charts folder not found:",
+        "analysis_no_png": "No PNG charts found in the analysis folder.",
+        "analysis_select": "Select charts to display:",
+        "source": "Source:",
+        "footer": "Demo version. Backend integration points marked with <code># BACKEND:</code>."
+    }
+}
+
+# -------------------------------------
+# LANGUAGE STATE
+# -------------------------------------
+if "language" not in st.session_state:
+    st.session_state.language = "PL"
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
+# Sidebar language switcher
+lang_choice = st.sidebar.selectbox("Language / Język", ["PL", "EN"], index=["PL", "EN"].index(st.session_state.language))
+if lang_choice != st.session_state.language:
+    st.session_state.language = lang_choice
+
+T = LANGUAGES[st.session_state.language]
+NAV = T["nav_labels"]
+
+# -------------------------------------
+# APP SETTINGS
+# -------------------------------------
+st.set_page_config(page_title="AI Salaries – Demo", page_icon="💼", layout="wide")
+
+# --- STYLE ---
 st.markdown(
     """
     <style>
       .main .block-container { max-width: 1200px; }
-      .stTabs [data-baseweb=\"tab-list\"] { gap: 0.5rem; }
-      .stTabs [data-baseweb=\"tab\"] { padding: 10px 16px; border-radius: 12px; }
+      .stTabs [data-baseweb="tab-list"] { gap: 0.5rem; }
+      .stTabs [data-baseweb="tab"] { padding: 10px 16px; border-radius: 12px; }
       .st-emotion-cache-ue6h4q p, .st-emotion-cache-1vbkxwb p { font-size: 0.99rem; }
       .small-note { color:#666; font-size:0.9rem; }
       .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#f1f3f5; margin-right:6px; }
@@ -26,75 +191,39 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# DANE POMOCNICZE (mock)
+# -------------------------------------
+# MOCK DATA
+# -------------------------------------
 ROLES = [
-    "AI Research Scientist",
-    "AI Software Engineer",
-    "AI Specialist",
-    "NLP Engineer",
-    "AI Consultant",
-    "AI Architect",
-    "Principal Data Scientist",
-    "Data Analyst",
+    "AI Research Scientist", "AI Software Engineer", "AI Specialist",
+    "NLP Engineer", "AI Consultant", "AI Architect",
+    "Principal Data Scientist", "Data Analyst",
 ]
 EXPERIENCE = ["Entry", "Mid", "Senior", "Principal", "Lead"]
 EMPLOYMENT = ["FT", "PT", "Contract", "Intern"]
 COMPANY_SIZE = ["S", "M", "L", "XL"]
 EDU = ["None", "Bachelor", "Master", "PhD"]
-INDUSTRY = [
-    "Technology", "Finance", "Healthcare", "Retail", "Manufacturing",
-    "Automotive", "Telecom", "Education", "Government",
-]
-SKILLS = [
-    "Python", "TensorFlow", "PyTorch", "NLP", "Computer Vision",
-    "MLOps", "AWS", "GCP", "Azure", "SQL", "Spark",
-]
+INDUSTRY = ["Technology", "Finance", "Healthcare", "Retail", "Manufacturing", "Automotive", "Telecom", "Education", "Government"]
+SKILLS = ["Python", "TensorFlow", "PyTorch", "NLP", "Computer Vision", "MLOps", "AWS", "GCP", "Azure", "SQL", "Spark"]
 LOCATIONS = ["US", "PL", "UK", "DE", "FR", "CA", "IN", "Remote"]
 
-# NAWIGACJA – PASEK BOCZNY
-st.sidebar.title("AI Salaries Demo")
-page = st.sidebar.radio(
-    "Nawigacja",
-    ["Strona główna", "Aplikacja"],
-    index=0,
-)
+# -------------------------------------
+# SIDEBAR NAVIGATION
+# -------------------------------------
+nav_keys = ["home", "app", "cleaning", "analysis"]
+page_label = st.sidebar.radio(T["nav_title"], [NAV[k] for k in nav_keys],
+                              index=nav_keys.index(st.session_state.page))
+label_to_key = {v: k for k, v in NAV.items()}
+st.session_state.page = label_to_key[page_label]
 
 st.sidebar.markdown("---")
-mock_toggle = st.sidebar.toggle("Użyj mocka (brak backendu)", value=True,
-                                help="Gdy nie ma jeszcze gotowych endpointów backendu, pokaż przykładowe wyniki.")
+mock_toggle = st.sidebar.toggle(T["mock_toggle"], value=True, help=T["mock_help"])
 
-# STRONA GŁÓWNA
-if page == "Strona główna":
-    st.title(" AI Salaries – demo frontendu")
-    st.write(
-        "To jest **mockup** aplikacji do predykcji wynagrodzeń na rynku AI. "
-        "Interfejs pozwala przewidywać zarobki na podstawie cech oferty oraz sprawdzać, jakie konfiguracje cech sprzyjają osiągnięciu zadanego poziomu pensji."
-    )
-
-    with st.container():
-        col1, col2 = st.columns([1.1, 0.9], gap="large")
-        with col1:
-            st.subheader(" Przepływy użytkownika")
-            st.markdown(
-                """
-                1. **Predykcja wynagrodzenia** – użytkownik podaje cechy oferty/stanowiska → dostaje przewidywane `salary_usd`.
-                2. **Celowane wynagrodzenie** – użytkownik podaje *docelowe* `salary_usd` i opcjonalne cechy →
-                   dostaje propozycje konfiguracji cech, z którymi takie wynagrodzenie jest możliwe.
-                3. **Warianty** – użytkownik podaje zestaw możliwych wartości (lub zostawia puste) dla kilku pól →
-                   aplikacja liczy przewidywane wynagrodzenia dla wszystkich kombinacji.
-                """
-            )
-        with col2:
-            st.subheader("ℹ Informacja")
-            st.markdown(
-                "To wersja pokazowa interfejsu użytkownika. Wyniki mogą być generowane w trybie demo (mock)."
-            )
-
-# MOCK PREDYKCJI
-
-def _estimate_salary_mock(job_title: str, experience_level: str, remote_ratio: int,
-                          education_required: str, company_size: str, required_skills: list,
-                          benefits_score: float) -> int:
+# -------------------------------------
+# MOCK PREDICTION
+# -------------------------------------
+def _estimate_salary_mock(job_title, experience_level, remote_ratio,
+                          education_required, company_size, required_skills, benefits_score):
     base = {
         "AI Research Scientist": 155_000,
         "AI Software Engineer": 135_000,
@@ -111,43 +240,49 @@ def _estimate_salary_mock(job_title: str, experience_level: str, remote_ratio: i
     size_adj = {"S": -0.03, "M": 0.0, "L": 0.03, "XL": 0.05}[company_size]
     skills_adj = min(len(required_skills) * 0.01, 0.08)
     benefits_adj = (benefits_score - 7.5) * 0.01
-    est = base * (1 + exp_boost + remote_adj + edu_adj + size_adj + skills_adj + benefits_adj)
-    return int(round(est, -2))
+    return int(round(base * (1 + exp_boost + remote_adj + edu_adj + size_adj + skills_adj + benefits_adj), -2))
 
-# APLIKACJA
+# -------------------------------------
+# HOME PAGE
+# -------------------------------------
+if st.session_state.page == "home":
+    st.title(T["home_title"])
+    st.write(T["home_desc"])
+    col1, col2 = st.columns([1.1, 0.9], gap="large")
+    with col1:
+        st.subheader(T["home_flows"])
+        st.markdown(T["home_flows_md"])
+    with col2:
+        st.subheader(T["info_header"])
+        st.markdown(T["info_text"])
 
-if page == "Aplikacja":
-    st.title("⚙Aplikacja")
-    tab_pred, tab_inverse, tab_grid = st.tabs([
-        " Predykcja wynagrodzenia",
-        " Jak osiągnąć podane wynagrodzenie?",
-        " Warianty (wiele kombinacji)",
-    ])
-
-    # TAB 1: Predykcja wynagrodzenia
+# -------------------------------------
+# APPLICATION
+# -------------------------------------
+if st.session_state.page == "app":
+    st.title(T["app_title"])
+    tab_pred, tab_inverse, tab_grid = st.tabs([T["tab_pred"], T["tab_inverse"], T["tab_grid"]])
     with tab_pred:
-        st.markdown("Podaj cechy stanowiska, aby obliczyć przewidywane wynagrodzenie (USD).")
-
+        st.markdown(T["form_intro"])
         with st.form("pred_form", clear_on_submit=False):
             c1, c2, c3 = st.columns(3)
             with c1:
-                job_title = st.selectbox("Stanowisko", ROLES)
-                experience_level = st.selectbox("Poziom doświadczenia", EXPERIENCE)
-                employment_type = st.selectbox("Typ zatrudnienia", EMPLOYMENT)
-                years_experience = st.number_input("Lata doświadczenia", 0, 40, 3)
-                education_required = st.selectbox("Wykształcenie", EDU)
+                job_title = st.selectbox(T["job_title"], ROLES)
+                experience_level = st.selectbox(T["experience_level"], EXPERIENCE)
+                employment_type = st.selectbox(T["employment_type"], EMPLOYMENT)
+                years_experience = st.number_input(T["years_experience"], 0, 40, 3)
+                education_required = st.selectbox(T["education_required"], EDU)
             with c2:
-                company_location = st.selectbox("Lokalizacja firmy", LOCATIONS)
-                employee_residence = st.selectbox("Miejsce zamieszkania", LOCATIONS)
-                company_size = st.selectbox("Wielkość firmy", COMPANY_SIZE)
-                remote_ratio = st.slider("Udział pracy zdalnej (%)", 0, 100, 50, step=5)
-                benefits_score = st.slider("Ocena benefitów (5–10)", 5.0, 10.0, 7.5, step=0.1)
+                company_location = st.selectbox(T["company_location"], LOCATIONS)
+                employee_residence = st.selectbox(T["employee_residence"], LOCATIONS)
+                company_size = st.selectbox(T["company_size"], COMPANY_SIZE)
+                remote_ratio = st.slider(T["remote_ratio"], 0, 100, 50, step=5)
+                benefits_score = st.slider(T["benefits_score"], 5.0, 10.0, 7.5, step=0.1)
             with c3:
-                industry = st.selectbox("Branża", INDUSTRY)
-                required_skills = st.multiselect("Wymagane umiejętności", SKILLS, default=["Python", "SQL"])
-                salary_currency = st.selectbox("Waluta wynagrodzenia", ["USD"])  # uproszczenie
-
-            submitted = st.form_submit_button("Oblicz wynagrodzenie")
+                industry = st.selectbox(T["industry"], INDUSTRY)
+                required_skills = st.multiselect(T["required_skills"], SKILLS, default=["Python", "SQL"])
+                salary_currency = st.selectbox(T["salary_currency"], ["USD"])
+            submitted = st.form_submit_button(T["form_submit"])
 
         if submitted:
             payload = {
@@ -165,192 +300,58 @@ if page == "Aplikacja":
                 "industry": industry,
                 "benefits_score": float(benefits_score),
             }
-
-            st.subheader("Wejście do predykcji (payload)")
+            st.subheader(T["payload_header"])
             st.json(payload, expanded=False)
-
-            # BACKEND: wywołanie najlepiej endpointa predykcji (np. POST /predict)
             if mock_toggle:
-                est = _estimate_salary_mock(
-                    job_title, experience_level, remote_ratio,
-                    education_required, company_size, required_skills, benefits_score
-                )
-                st.success(f" **Predykcja (mock):** ${est:,}")
-                st.caption("To tylko symulacja po stronie frontendu**.")
+                est = _estimate_salary_mock(job_title, experience_level, remote_ratio,
+                                            education_required, company_size, required_skills, benefits_score)
+                st.success(f"**{T['mock_result']}** ${est:,}")
+                st.caption(T["mock_caption"])
 
-    # TAB 2: Jak osiągnąć podane wynagrodzenie?
-    with tab_inverse:
-        st.markdown(
-            "Wprowadź docelowe wynagrodzenie w USD oraz (opcjonalnie) wybrane parametry. \n"
-            "Zwrócimy przykładowe konfiguracje cech, przy których takie wynagrodzenie jest możliwe."
-        )
+# -------------------------------------
+# CLEANING
+# -------------------------------------
+if st.session_state.page == "cleaning":
+    st.title(T["clean_title"])
+    st.markdown(T["clean_md"])
+    with st.expander(T["clean_code"]):
+        clean_script = BASE_DIR.parent / "Czysczenie.py"
+        if clean_script.exists():
+            st.code(open(clean_script).read(), language="python")
+        else:
+            st.warning(f"{T['clean_notfound']} {clean_script}")
+    cleaned_path = BASE_DIR.parent / "Data" / "ai_job_dataset_clean.csv"
+    if cleaned_path.exists():
+        df_clean = pd.read_csv(cleaned_path)
+        st.subheader(T["clean_preview"])
+        st.dataframe(df_clean.head(20), use_container_width=True)
+    else:
+        st.info(T["clean_csv_missing"].format(cleaned_path.name))
 
-        with st.form("inverse_form", clear_on_submit=False):
-            target_salary = st.number_input("Docelowe wynagrodzenie (USD)", min_value=30_000, max_value=500_000, value=140_000, step=1_000)
+# -------------------------------------
+# ANALYSIS
+# -------------------------------------
+if st.session_state.page == "analysis":
+    st.title(T["analysis_title"])
+    st.markdown(T["analysis_md"])
+    charts_dir = BASE_DIR.parent / "plots" / "etap0"
+    if not charts_dir.exists():
+        st.warning(f"{T['analysis_folder_missing']} {charts_dir}")
+    else:
+        image_files = sorted(list(charts_dir.glob("*.png")))
+        if not image_files:
+            st.info(T["analysis_no_png"])
+        else:
+            selected = st.multiselect(T["analysis_select"], [f.stem for f in image_files],
+                                      default=[f.stem for f in image_files])
+            for img_path in image_files:
+                if img_path.stem in selected:
+                    st.subheader(img_path.stem.replace("_", " ").title())
+                    st.image(Image.open(img_path), use_container_width=True)
+                    st.caption(f"{T['source']} {img_path.name}")
 
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                i_job_title = st.selectbox("Stanowisko (opcjonalnie)", ["(dowolne)"] + ROLES)
-                i_experience = st.selectbox("Doświadczenie (opcjonalnie)", ["(dowolne)"] + EXPERIENCE)
-                i_employment = st.selectbox("Typ zatrudnienia (opcjonalnie)", ["(dowolny)"] + EMPLOYMENT)
-            with c2:
-                i_company_loc = st.selectbox("Lokalizacja firmy (opcjonalnie)", ["(dowolna)"] + LOCATIONS)
-                i_company_size = st.selectbox("Wielkość firmy (opcjonalnie)", ["(dowolna)"] + COMPANY_SIZE)
-                i_remote = st.slider("Udział pracy zdalnej (opcjonalnie)", 0, 100, 50, step=5)
-            with c3:
-                i_edu = st.selectbox("Wykształcenie (opcjonalnie)", ["(dowolne)"] + EDU)
-                i_years = st.number_input("Lata doświadczenia (opcjonalnie)", 0, 40, 5)
-                i_benefits = st.slider("Ocena benefitów (opcjonalnie)", 5.0, 10.0, 7.5, step=0.1)
-
-            i_skills = st.multiselect("Umiejętności (opcjonalnie)", SKILLS)
-            i_industry = st.selectbox("Branża (opcjonalnie)", ["(dowolna)"] + INDUSTRY)
-
-            inverse_submitted = st.form_submit_button(" Pokaż możliwe konfiguracje")
-
-        if inverse_submitted:
-            constraints = {
-                "target_salary_usd": target_salary,
-                "job_title": None if i_job_title.startswith("(") else i_job_title,
-                "experience_level": None if i_experience.startswith("(") else i_experience,
-                "employment_type": None if i_employment.startswith("(") else i_employment,
-                "company_location": None if i_company_loc.startswith("(") else i_company_loc,
-                "company_size": None if i_company_size.startswith("(") else i_company_size,
-                "remote_ratio": i_remote,
-                "education_required": None if i_edu.startswith("(") else i_edu,
-                "years_experience": i_years,
-                "benefits_score": float(i_benefits),
-                "required_skills": i_skills or None,
-                "industry": None if i_industry.startswith("(") else i_industry,
-            }
-
-            st.subheader(" Wejście do wyszukiwania konfiguracji (constraints)")
-            st.json(constraints, expanded=False)
-
-            # BACKEND: wywołanie najlepiej endpointa *odwrotnej* analizy/eksplainer ( POST /inverse)
-            if mock_toggle:
-                examples = [
-                    {
-                        "job_title": constraints["job_title"] or "AI Architect",
-                        "experience_level": constraints["experience_level"] or "Senior",
-                        "employment_type": constraints["employment_type"] or "FT",
-                        "company_location": constraints["company_location"] or "US",
-                        "company_size": constraints["company_size"] or "L",
-                        "remote_ratio": constraints["remote_ratio"],
-                        "education_required": constraints["education_required"] or "Master",
-                        "years_experience": constraints["years_experience"],
-                        "industry": constraints["industry"] or "Technology",
-                        "required_skills": ", ".join(constraints["required_skills"] or ["Python", "PyTorch", "MLOps"]),
-                        "benefits_score": constraints["benefits_score"],
-                        "salary_usd (est.)": f"${target_salary:,}",
-                        "dopasowanie": "wysokie",
-                    },
-                    {
-                        "job_title": constraints["job_title"] or "NLP Engineer",
-                        "experience_level": constraints["experience_level"] or "Lead",
-                        "employment_type": constraints["employment_type"] or "FT",
-                        "company_location": constraints["company_location"] or "UK",
-                        "company_size": constraints["company_size"] or "XL",
-                        "remote_ratio": constraints["remote_ratio"],
-                        "education_required": constraints["education_required"] or "PhD",
-                        "years_experience": max(0, constraints["years_experience"] - 1),
-                        "industry": constraints["industry"] or "Finance",
-                        "required_skills": ", ".join(constraints["required_skills"] or ["Python", "NLP", "AWS"]),
-                        "benefits_score": max(5.0, min(10.0, constraints["benefits_score"] + 0.3)),
-                        "salary_usd (est.)": f"${int(target_salary*1.03):,}",
-                        "dopasowanie": "średnie",
-                    },
-                    {
-                        "job_title": constraints["job_title"] or "AI Software Engineer",
-                        "experience_level": constraints["experience_level"] or "Mid",
-                        "employment_type": constraints["employment_type"] or "Contract",
-                        "company_location": constraints["company_location"] or "DE",
-                        "company_size": constraints["company_size"] or "M",
-                        "remote_ratio": constraints["remote_ratio"],
-                        "education_required": constraints["education_required"] or "Bachelor",
-                        "years_experience": max(0, constraints["years_experience"] - 2),
-                        "industry": constraints["industry"] or "Automotive",
-                        "required_skills": ", ".join(constraints["required_skills"] or ["Python", "TensorFlow", "GCP"]),
-                        "benefits_score": max(5.0, min(10.0, constraints["benefits_score"] - 0.2)),
-                        "salary_usd (est.)": f"${int(target_salary*0.97):,}",
-                        "dopasowanie": "wstępne",
-                    },
-                ]
-                df = pd.DataFrame(examples)
-                st.dataframe(df, use_container_width=True)
-                st.caption("Symulacyjne przykłady.")
-
-    # TAB 3: Warianty – wiele kombinacji (grid)
-    with tab_grid:
-        st.markdown("Zdefiniuj *zestaw wartości* dla wybranych pól (lub zostaw puste), aby policzyć przewidywane wynagrodzenia dla wszystkich kombinacji.")
-
-        with st.form("grid_form", clear_on_submit=False):
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                g_job_titles = st.multiselect("Stanowiska (puste = wszystkie)", ROLES)
-                g_experience = st.multiselect("Poziomy doświadczenia (puste = wszystkie)", EXPERIENCE)
-                g_company_sizes = st.multiselect("Wielkości firm (puste = wszystkie)", COMPANY_SIZE)
-            with c2:
-                g_locations = st.multiselect("Lokalizacje firm (puste = wszystkie)", LOCATIONS)
-                g_education = st.multiselect("Wykształcenie (puste = wszystkie)", EDU)
-                g_remote_min, g_remote_max = st.slider("Zakres pracy zdalnej (%)", 0, 100, (40, 80), step=5)
-            with c3:
-                g_skills = st.multiselect("Umiejętności (liczone jako zestaw bazowy)", SKILLS, default=["Python", "SQL"])
-                g_benefits = st.slider("Ocena benefitów", 5.0, 10.0, 7.5, step=0.1)
-                g_currency = st.selectbox("Waluta", ["USD"])
-
-            g_years = st.number_input("Lata doświadczenia (jedna wartość)", 0, 40, 3)
-            g_industry = st.selectbox("Branża (jedna wartość)", INDUSTRY)
-            g_employment = st.selectbox("Typ zatrudnienia (jedna wartość)", EMPLOYMENT)
-
-            max_rows = st.number_input("Limit kombinacji", 1, 2000, 200)
-            grid_submit = st.form_submit_button("Oblicz wszystkie kombinacje")
-
-        if grid_submit:
-            titles = g_job_titles or ROLES
-            exps = g_experience or EXPERIENCE
-            sizes = g_company_sizes or COMPANY_SIZE
-            locs = g_locations or LOCATIONS
-            edus = g_education or EDU
-            # Dyskretyzacja zakresu remote co 10 p.p.
-            remotes = list(range(g_remote_min, g_remote_max + 1, 10)) or [50]
-
-            combos = list(itertools.product(titles, exps, sizes, locs, edus, remotes))
-            if len(combos) > max_rows:
-                st.warning(f"Dużo kombinacji: {len(combos)}. Pokazuję pierwsze {int(max_rows)}.")
-                combos = combos[: int(max_rows)]
-
-            records = []
-            for jt, xp, sz, loc, edu in [(c[0], c[1], c[2], c[3], c[4]) for c in combos]:
-                # Wyciągane remote z odpowiadającego tuple
-                remote = combos[records.__len__()][5]
-                # BACKEND: tutaj predict
-                if mock_toggle:
-                    est = _estimate_salary_mock(jt, xp, remote, edu, sz, g_skills, g_benefits)
-                else:
-                    est = None  # wynik z backendu
-                records.append({
-                    "job_title": jt,
-                    "experience_level": xp,
-                    "company_size": sz,
-                    "company_location": loc,
-                    "education_required": edu,
-                    "remote_ratio": remote,
-                    "skills(bazowe)": ", ".join(g_skills),
-                    "benefits_score": g_benefits,
-                    "employment_type": g_employment,
-                    "years_experience": g_years,
-                    "industry": g_industry,
-                    "salary_usd (est.)": est,
-                })
-
-            out_df = pd.DataFrame(records)
-            st.dataframe(out_df, use_container_width=True)
-            st.caption("Wyniki na podstawie wszystkich kombinacji wybranych pól. Dla demo.")
-
-    st.markdown("---")
-    st.markdown(
-        """
-        <span class=\"muted\">Wersja demo. Miejsca integracji z backendem oznaczone w kodzie jako <code># BACKEND:</code>.</span>
-        """,
-        unsafe_allow_html=True,
-    )
+# -------------------------------------
+# FOOTER
+# -------------------------------------
+st.markdown("---")
+st.markdown(f"<span class='muted'>{T['footer']}</span>", unsafe_allow_html=True)
