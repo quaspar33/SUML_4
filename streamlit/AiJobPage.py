@@ -35,7 +35,7 @@ LANGUAGES = {
             "app": "Aplikacja",
             "cleaning": "Czyszczenie danych",
             "analysis": "Analiza modelu",
-            "model-data": "Dane modeli"
+            "models_resutls": "Wyniki modeli"
         },
         "mock_toggle": "Użyj mocka (brak backendu)",
         "mock_help": "Gdy nie ma gotowych endpointów backendu, pokaż przykładowe wyniki.",
@@ -86,12 +86,15 @@ LANGUAGES = {
         7. Ekstrakcja top umiejętności z kolumny `required_skills`
         """,
         "models_explained": """
-        W tej sekcji opisano etapy tworzenia i porównywania modeli:
-        lorem ipsum ...
+        W tej sekcji przedstawiono logikę tworzenia i porównywania modeli predykcji wynagrodzeń używaną w aplikacji. Obecna implementacja korzysta z modelu, który wylicza pensję na podstawie zestawu cech oferty (stanowisko, doświadczenie, praca zdalna, wykształcenie, rozmiar firmy, umiejętności i benefity).
+        Dodatkowo opisano dwa procesy analityczne:
+        Inverse salary search – przeszukiwanie przestrzeni możliwych konfiguracji cech w celu znalezienia profili o wynagrodzeniu najbliższym wartości zadanej.
+        Salary grid – generowanie siatki wariantów (grid search) i obliczanie przewidywanych wynagrodzeń dla każdej kombinacji parametrów.
         """,
         "clean_code": "Zobacz kod czyszczenia",
         "clean_notfound": "Nie znaleziono pliku:",
         "clean_preview": "Podgląd wyczyszczonych danych",
+        "models_preview": "Podgląd wyników modeli",
         "clean_csv_missing": "Plik `{}` nie został znaleziony.",
         "analysis_title": "Analiza modelu predykcji wynagrodzeń",
         "analysis_md": """
@@ -124,7 +127,7 @@ LANGUAGES = {
             "app": "Application",
             "cleaning": "Data Cleaning",
             "analysis": "Model Analysis",
-            "model-data": "Models Data"
+            "models_resutls": "Models Results"
         },
         "mock_toggle": "Use mock (no backend)",
         "mock_help": "Show sample results when backend endpoints are unavailable.",
@@ -163,6 +166,7 @@ LANGUAGES = {
         "mock_result": "Prediction (mock):",
         "mock_caption": "Frontend-only simulation.",
         "clean_title": "Cleaning, Encoding, and Outlier Removal",
+        "model_title": "Models results",
         "clean_md": """
         This section describes preprocessing steps for salary prediction data:
         1. Strip whitespace in text columns  
@@ -173,9 +177,16 @@ LANGUAGES = {
         6. Map ordinal features (`company_size`, `education_required`)  
         7. Extract top skills from `required_skills`
         """,
+        "models_explained": """
+        This section explains the logic used to build and compare salary prediction models within the application. The current implementation uses a model that estimates salary based on job features such as job title, experience level, remote ratio, education, company size, skills, and benefits.
+        The section also describes two analytical procedures:
+        Inverse salary search – exploring the space of possible job configurations to find those whose predicted salary is closest to a target value.
+        Salary grid – generating a parameter grid and computing salary predictions for every combination.
+        """,
         "clean_code": "View Cleaning Code",
         "clean_notfound": "File not found:",
         "clean_preview": "Preview of Cleaned Data",
+        "models_preview": "Preview of Models Results",
         "clean_csv_missing": "File `{}` not found.",
         "analysis_title": "Model Analysis and Visualization",
         "analysis_md": """
@@ -259,7 +270,7 @@ LOCATIONS = ["US", "PL", "UK", "DE", "FR", "CA", "IN", "Remote"]
 # -------------------------------------
 # SIDEBAR NAVIGATION
 # -------------------------------------
-nav_keys = ["home", "app", "cleaning", "analysis", "model-data"]
+nav_keys = ["home", "app", "cleaning", "analysis", "models_resutls"]
 page_label = st.sidebar.radio(T["nav_title"], [NAV[k] for k in nav_keys],
                               index=nav_keys.index(st.session_state.page))
 label_to_key = {v: k for k, v in NAV.items()}
@@ -499,13 +510,13 @@ if st.session_state.page == "analysis":
 # -------------------------------------
 # MODELS
 # -------------------------------------
-if st.session_state.page == "model-data":
+if st.session_state.page == "models_resutls":
     st.title(T["model_title"])
     st.markdown(T["models_explained"])
-    cleaned_path = BASE_DIR.parent / "Data" / "clean_data" / "ai_job_dataset_clean.csv"
+    cleaned_path = BASE_DIR.parent / "Data" / "models" / "models.csv"
     if cleaned_path.exists():
         df_clean = pd.read_csv(cleaned_path)
-        st.subheader(T["clean_preview"])
+        st.subheader(T["models_preview"])
         st.dataframe(df_clean.head(20), use_container_width=True)
     else:
         st.info(T["clean_csv_missing"].format(cleaned_path.name))
