@@ -1,11 +1,11 @@
-# Czyszczenie, kodowanie i usuwanie wartości odstających
+#Czyszczenie, kodowanie i usuwanie wartości odstających
 
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
-data_path = Path("data/ai_job_dataset.csv")
-output_path = Path("data/ai_job_dataset_clean.csv")
+data_path = Path("data/raw_data/ai_job_dataset.csv")
+output_path = Path("data/clean_data/ai_job_dataset_clean.csv")
 
 # Wczytanie danych
 df = pd.read_csv(data_path)
@@ -26,7 +26,7 @@ if "remote_ratio" in df.columns:
     df["remote_ratio"] = pd.to_numeric(df["remote_ratio"], errors="coerce").clip(0, 100)
     df["remote_ratio"] = df["remote_ratio"].apply(lambda x: min([0, 50, 100], key=lambda v: abs(v - x)))
 
-# Usuwanie wartości odstających (IQR)
+# Usuwanie wartości odstających (IQR)q
 def remove_outliers_iqr(data, cols):
     clean_data = data.copy()
     for col in cols:
