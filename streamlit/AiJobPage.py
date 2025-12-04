@@ -35,6 +35,7 @@ LANGUAGES = {
             "app": "Aplikacja",
             "cleaning": "Czyszczenie danych",
             "analysis": "Analiza modelu",
+            "model-data": "Dane modeli"
         },
         "mock_toggle": "Użyj mocka (brak backendu)",
         "mock_help": "Gdy nie ma gotowych endpointów backendu, pokaż przykładowe wyniki.",
@@ -73,6 +74,7 @@ LANGUAGES = {
         "mock_result": "Predykcja (mock):",
         "mock_caption": "To tylko symulacja po stronie frontendu.",
         "clean_title": "Czyszczenie, kodowanie i usuwanie wartości odstających",
+        "model_title": "Wyniki modeli",
         "clean_md": """
         W tej sekcji opisano etapy przygotowania danych wejściowych dla modelu predykcji wynagrodzeń:
         1. Usunięcie białych znaków w kolumnach tekstowych  
@@ -82,6 +84,10 @@ LANGUAGES = {
         5. Kodowanie kategorycznych (`.cat.codes`, One-Hot)  
         6. Mapowanie wartości porządkowych (`company_size`, `education_required`)  
         7. Ekstrakcja top umiejętności z kolumny `required_skills`
+        """,
+        "models_explained": """
+        W tej sekcji opisano etapy tworzenia i porównywania modeli:
+        lorem ipsum ...
         """,
         "clean_code": "Zobacz kod czyszczenia",
         "clean_notfound": "Nie znaleziono pliku:",
@@ -118,6 +124,7 @@ LANGUAGES = {
             "app": "Application",
             "cleaning": "Data Cleaning",
             "analysis": "Model Analysis",
+            "model-data": "Models Data"
         },
         "mock_toggle": "Use mock (no backend)",
         "mock_help": "Show sample results when backend endpoints are unavailable.",
@@ -252,7 +259,7 @@ LOCATIONS = ["US", "PL", "UK", "DE", "FR", "CA", "IN", "Remote"]
 # -------------------------------------
 # SIDEBAR NAVIGATION
 # -------------------------------------
-nav_keys = ["home", "app", "cleaning", "analysis"]
+nav_keys = ["home", "app", "cleaning", "analysis", "model-data"]
 page_label = st.sidebar.radio(T["nav_title"], [NAV[k] for k in nav_keys],
                               index=nav_keys.index(st.session_state.page))
 label_to_key = {v: k for k, v in NAV.items()}
@@ -459,7 +466,7 @@ if st.session_state.page == "cleaning":
             st.code(open(clean_script).read(), language="python")
         else:
             st.warning(f"{T['clean_notfound']} {clean_script}")
-    cleaned_path = BASE_DIR.parent / "Data" / "ai_job_dataset_clean.csv"
+    cleaned_path = BASE_DIR.parent / "Data" / "clean_data" / "ai_job_dataset_clean.csv"
     if cleaned_path.exists():
         df_clean = pd.read_csv(cleaned_path)
         st.subheader(T["clean_preview"])
@@ -488,6 +495,20 @@ if st.session_state.page == "analysis":
                     st.subheader(img_path.stem.replace("_", " ").title())
                     st.image(Image.open(img_path), use_container_width=True)
                     st.caption(f"{T['source']} {img_path.name}")
+
+# -------------------------------------
+# MODELS
+# -------------------------------------
+if st.session_state.page == "model-data":
+    st.title(T["model_title"])
+    st.markdown(T["models_explained"])
+    cleaned_path = BASE_DIR.parent / "Data" / "clean_data" / "ai_job_dataset_clean.csv"
+    if cleaned_path.exists():
+        df_clean = pd.read_csv(cleaned_path)
+        st.subheader(T["clean_preview"])
+        st.dataframe(df_clean.head(20), use_container_width=True)
+    else:
+        st.info(T["clean_csv_missing"].format(cleaned_path.name))
 
 # -------------------------------------
 # FOOTER
