@@ -7,7 +7,7 @@ import seaborn as sns
 from pathlib import Path
 
 #Ścieżki
-data_path = Path("data/ai_job_dataset.csv")
+data_path = Path("data/raw_data/ai_job_dataset.csv")
 plots_dir = Path("plots/etap0")
 plots_dir.mkdir(parents=True, exist_ok=True)
 
