@@ -497,7 +497,15 @@ if st.session_state.page == "analysis":
             for img_path in image_files:
                 if img_path.stem in selected:
                     st.subheader(img_path.stem.replace("_", " ").title())
-                    st.image(Image.open(img_path), use_container_width=True)
+                    try:
+                        img = Image.open(img_path)
+                        try:
+                            st.image(img, use_container_width=True)
+                        except TypeError:
+                            st.image(img, use_column_width=True)
+                    except Exception as e:
+                        st.error(f"Nie można załadować obrazu: {img_path.name}")
+                        st.error(str(e))
                     st.caption(f"{T['source']} {img_path.name}")
 
 # -------------------------------------
