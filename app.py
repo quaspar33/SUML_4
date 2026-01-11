@@ -506,7 +506,7 @@ if st.session_state.page == "analysis":
 if st.session_state.page == "models_resutls":
     st.title(T["model_title"])
     st.markdown(T["models_explained"])
-    cleaned_path = BASE_DIR / "Data" / "models" / "models.csv"
+    cleaned_path = BASE_DIR / "Data" / "models_scores" / "models.csv"
     if cleaned_path.exists():
         df_clean = pd.read_csv(cleaned_path)
         st.subheader(T["models_preview"])
