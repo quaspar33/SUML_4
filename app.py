@@ -6,11 +6,12 @@ from pathlib import Path
 from PIL import Image
 import sys
 
+st.set_page_config(page_title="AI Salaries – Demo", page_icon="💼", layout="wide")
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-# Import z pakietu connector
 try:
     from connector.Connector import predict_salary, inverse_salary_search, salary_grid
 except Exception as e:
@@ -226,11 +227,6 @@ if lang_choice != st.session_state.language:
 
 T = LANGUAGES[st.session_state.language]
 NAV = T["nav_labels"]
-
-# -------------------------------------
-# APP SETTINGS
-# -------------------------------------
-st.set_page_config(page_title="AI Salaries – Demo", page_icon="💼", layout="wide")
 
 # --- STYLE ---
 st.markdown(
