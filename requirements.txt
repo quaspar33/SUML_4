@@ -1,0 +1,7 @@
+autogluon
+matplotlib
+numpy
+pandas
+Pillow
+seaborn
+streamlit

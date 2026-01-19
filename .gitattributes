@@ -1,3 +1,5 @@
+*.png filter=lfs diff=lfs merge=lfs -text
+plots/**/*.png filter=lfs diff=lfs merge=lfs -text
 Data/models/**/*.pkl filter=lfs diff=lfs merge=lfs -text
 Data/models/utils/data/X.pkl filter=lfs diff=lfs merge=lfs -text
 Data/models/**/*.ubj filter=lfs diff=lfs merge=lfs -text

@@ -1,3 +1,14 @@
+---
+title: SUML_4
+emoji: 📊
+colorFrom: blue
+colorTo: green
+sdk: streamlit
+sdk_version: 1.29.0
+app_file: app.py
+pinned: false
+---
+
 # Instructions
 ## Virtual environment creation and preparation
 ### Windows
@@ -7,6 +18,5 @@ In order to create a virtual environment and install all packages associated wit
 ### Mac
 If you're using Mac, use:  
 *python -3.11 -m venv .venv; source .venv/bin/activate; pip install poetry>=2.2.1; poetry install --no-root*
-
 
 If you already have a virtual environment set up, just run *poetry install*
