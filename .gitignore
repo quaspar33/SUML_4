@@ -217,5 +217,3 @@ __marimo__/
 
 # PyCharm
 .idea/AutogluonModels_raw/
-Data/models/
-*.pkl
