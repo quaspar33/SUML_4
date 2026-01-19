@@ -1,32 +1,21 @@
-# Connector.py
-"""
-Connector module for AI Salaries Streamlit app.
-
-Zadania:
-- Udostępnia proste funkcje, które wywołuje frontend (Streamlit)
-- Na razie wszystko liczy lokalnie (mock), ale w jednym miejscu
-  – tu później można podmienić logikę na prawdziwe API HTTP.
-
-Funkcje:
-- predict_salary(payload, use_mock=True)
-- inverse_salary_search(target_salary, constraints, use_mock=True)
-- salary_grid(grid_spec, base_payload, use_mock=True)
-"""
-
 from typing import Any, Dict, List, Optional
+from pathlib import Path
 import itertools
+import pandas as pd
+
+try:
+    from autogluon.tabular import TabularPredictor
+except Exception:
+    TabularPredictor = None
 
 
-# -------------------------------
-# MOCK – logika predykcji
-# -------------------------------
+MODELS_DIR = Path("Data/models")
+LABEL_COL = "salary_usd"
+
+_MODEL_CACHE: Dict[str, Any] = {"predictor": None}
+
 
 def _estimate_salary_mock(payload: Dict[str, Any]) -> int:
-    """
-    Prosta funkcja mockująca model ML.
-    Bazuje na tym samym wzorze, który był w Streamlit (_estimate_salary_mock),
-    ale oparta jest na słowniku payload.
-    """
     job_title = payload.get("job_title", "AI Specialist")
     experience_level = payload.get("experience_level", "Mid")
     remote_ratio = payload.get("remote_ratio", 0)
@@ -83,61 +72,97 @@ def _estimate_salary_mock(payload: Dict[str, Any]) -> int:
     return int(round(salary, -2))
 
 
-# -------------------------------
-# PUBLICZNE API dla frontendu
-# -------------------------------
+def _load_predictor() -> "TabularPredictor":
+    if _MODEL_CACHE["predictor"] is not None:
+        return _MODEL_CACHE["predictor"]
 
-def predict_salary(payload: Dict[str, Any], use_mock: bool = True) -> Dict[str, Any]:
-    """
-    Główna funkcja do predykcji wynagrodzenia.
+    if TabularPredictor is None:
+        raise RuntimeError("AutoGluon nie jest zainstalowany w środowisku.")
 
-    payload – słownik z cechami oferty (to co budujesz w Streamlit)
-    use_mock – gdy False, tu w przyszłości można wpiąć prawdziwy backend.
-    """
-    try:
-        # Na razie ignoruje use_mock i zawsze używamy mocka,
-        # ale zostawiłem to pole w odpowiedzi, żeby w przyszłości
-        # łatwo było odróżnić źródło.
+    if not MODELS_DIR.exists():
+        raise FileNotFoundError(f"Nie znaleziono katalogu z modelem: {MODELS_DIR}")
+
+    predictor = TabularPredictor.load(str(MODELS_DIR))
+    _MODEL_CACHE["predictor"] = predictor
+    return predictor
+
+
+def _payload_to_frame(payload: Dict[str, Any]) -> pd.DataFrame:
+    df = pd.DataFrame([payload])
+
+    required_cols = ['posting_date', 'application_deadline']
+    for col in required_cols:
+        if col not in df.columns:
+            df[col] = pd.NA
+
+    if "remote_ratio" in df.columns:
+        df["remote_ratio"] = pd.to_numeric(df["remote_ratio"], errors="coerce")
+    if "years_experience" in df.columns:
+        df["years_experience"] = pd.to_numeric(df["years_experience"], errors="coerce")
+    if "benefits_score" in df.columns:
+        df["benefits_score"] = pd.to_numeric(df["benefits_score"], errors="coerce")
+
+    for col in ["posting_date", "application_deadline"]:
+        df[col] = pd.to_datetime(df[col], errors="coerce")
+
+    if "job_description_length" in df.columns:
+        df["job_description_length"] = pd.to_numeric(df["job_description_length"], errors="coerce").fillna(0)
+    else:
+        df["job_description_length"] = 0
+
+    if "company_name" in df.columns:
+        df["company_name"] = df["company_name"].astype(str).fillna("Unknown")
+    else:
+        df["company_name"] = "Unknown"
+
+    if "required_skills" in df.columns:
+        v = df.at[0, "required_skills"]
+        if isinstance(v, list):
+            df.at[0, "required_skills"] = ", ".join([str(x) for x in v])
+
+    return df
+
+
+def predict_salary(payload: Dict[str, Any], use_mock: bool = False) -> Dict[str, Any]:
+    if use_mock:
         salary_usd = _estimate_salary_mock(payload)
         return {
             "status": "ok",
-            "prediction": {
-                "salary_usd": salary_usd,
-            },
-            "meta": {
-                "source": "mock",  # docelowo: "backend" / "mock_fallback" itd.
-                "use_mock_flag": use_mock,
-            },
+            "prediction": {"salary_usd": salary_usd},
+            "meta": {"source": "mock"},
+        }
+
+    try:
+        predictor = _load_predictor()
+        X = _payload_to_frame(payload)
+
+        if LABEL_COL in X.columns:
+            X = X.drop(columns=[LABEL_COL])
+
+        pred = predictor.predict(X)
+        salary_usd = float(pred.iloc[0])
+
+        return {
+            "status": "ok",
+            "prediction": {"salary_usd": salary_usd},
+            "meta": {"source": "autogluon"},
         }
     except Exception as exc:
         return {
             "status": "error",
             "error": str(exc),
+            "meta": {"source": "autogluon"},
         }
 
 
 def inverse_salary_search(
     target_salary: int,
     constraints: Optional[Dict[str, Optional[List[Any]]]] = None,
-    use_mock: bool = True,
+    use_mock: bool = False,
     top_n: int = 10,
 ) -> Dict[str, Any]:
-    """
-    Znajduje konfiguracje cech, które dają wynagrodzenie bliskie target_salary.
-
-    constraints:
-        {
-          "job_title": [..] lub None,
-          "experience_level": [..] lub None,
-          "company_size": [..] lub None,
-          "remote_ratio": [..] lub None,
-        }
-
-    Zwraca listę konfiguracji posortowaną po |salary - target|.
-    """
     constraints = constraints or {}
 
-    # Domyślne przestrzenie przeszukiwania
     default_job_titles = [
         "AI Research Scientist",
         "AI Software Engineer",
@@ -158,15 +183,12 @@ def inverse_salary_search(
     remote_ratios = constraints.get("remote_ratio") or default_remote_ratio
 
     candidates = []
-    for job_title, exp, size, rr in itertools.product(
-        job_titles, exp_levels, company_sizes, remote_ratios
-    ):
+    for job_title, exp, size, rr in itertools.product(job_titles, exp_levels, company_sizes, remote_ratios):
         payload = {
             "job_title": job_title,
             "experience_level": exp,
             "company_size": size,
             "remote_ratio": rr,
-            # Przykładowe wartości
             "employment_type": "FT",
             "company_location": "US",
             "employee_residence": "US",
@@ -177,8 +199,14 @@ def inverse_salary_search(
             "benefits_score": 7.5,
             "salary_currency": "USD",
         }
-        salary = _estimate_salary_mock(payload)
+
+        resp = predict_salary(payload, use_mock=use_mock)
+        if resp.get("status") != "ok":
+            return resp
+
+        salary = float(resp["prediction"]["salary_usd"])
         diff = abs(salary - target_salary)
+
         candidates.append(
             {
                 "job_title": job_title,
@@ -190,30 +218,21 @@ def inverse_salary_search(
             }
         )
 
-    # Sortujemy po różnicy od targetu
     candidates.sort(key=lambda x: x["diff_from_target"])
     solutions = candidates[:top_n]
 
     return {
         "status": "ok",
         "solutions": solutions,
-        "meta": {
-            "source": "mock",
-            "target_salary": target_salary,
-            "use_mock_flag": use_mock,
-        },
+        "meta": {"source": "mock" if use_mock else "autogluon", "target_salary": target_salary},
     }
 
 
 def salary_grid(
     grid_spec: Dict[str, List[Any]],
     base_payload: Dict[str, Any],
-    use_mock: bool = True,
+    use_mock: bool = False,
 ) -> Dict[str, Any]:
-    """
-    Liczy przewidywane wynagrodzenia dla wszystkich kombinacji w grid_spec.
-    base_payload – słownik z innymi cechami, które są stałe dla wszystkich kombinacji.
-    """
     try:
         keys = list(grid_spec.keys())
         values_lists = [grid_spec[k] for k in keys]
@@ -221,11 +240,15 @@ def salary_grid(
         rows: List[Dict[str, Any]] = []
 
         for combo in itertools.product(*values_lists):
-            payload = dict(base_payload)  # kopia
+            payload = dict(base_payload)
             for k, v in zip(keys, combo):
                 payload[k] = v
-            salary = _estimate_salary_mock(payload)
 
+            resp = predict_salary(payload, use_mock=use_mock)
+            if resp.get("status") != "ok":
+                return resp
+
+            salary = float(resp["prediction"]["salary_usd"])
             row = {k: payload[k] for k in keys}
             row["salary_usd"] = salary
             rows.append(row)
@@ -233,14 +256,7 @@ def salary_grid(
         return {
             "status": "ok",
             "rows": rows,
-            "meta": {
-                "source": "mock",
-                "use_mock_flag": use_mock,
-                "grid_size": len(rows),
-            },
+            "meta": {"source": "mock" if use_mock else "autogluon", "grid_size": len(rows)},
         }
     except Exception as exc:
-        return {
-            "status": "error",
-            "error": str(exc),
-        }
+        return {"status": "error", "error": str(exc)}

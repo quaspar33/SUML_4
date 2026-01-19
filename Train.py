@@ -8,7 +8,7 @@ from autogluon.tabular import TabularDataset, TabularPredictor
 def main():
 
     # Ścieżki
-    models_dir = Path("data/models")
+    models_dir = Path("Data/models")
 
     models_dir.mkdir(parents=True, exist_ok=True)
 
@@ -33,7 +33,7 @@ def main():
         eval_metric="root_mean_squared_error"
     ).fit(
         train_data=train_data,
-        presets="medium_quality",  # można zmienić na "best_quality/faster_train"
+        presets="medium_quality",  # best_quality/faster_train
         time_limit=600,          # limit czasu
         verbosity=2
     )
